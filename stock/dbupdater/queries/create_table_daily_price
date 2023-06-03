@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS daily_orice(
+    code VARCHAR(20),
+    date DATE,
+    open BIGINT,
+    high BIGINT,
+    low BIGINT,
+    close BIGINT,
+    diff BIGINT,
+    volume BIGINT,
+    PRIMARY KEY (code, date)
+)
