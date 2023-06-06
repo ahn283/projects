@@ -6,13 +6,11 @@ import urllib
 import requests
 import time, calendar, json
 from threading import Timer
+import security
 
 # variables
 ## password hiden
 
-class feature:
-    def __init__(self):
-        self.pw = '04250629'
 
 
 class DBUpdater:
@@ -21,14 +19,14 @@ class DBUpdater:
         """생성자: MariaDB 연결 및 종목코드 딕셔너리 생성"""
 
         # read Database password
-        pw = feature().pw
+        self.pw = security.password().db_pw
 
 
         # connect to MariaDB
         self.conn = pymysql.connect(
             host='localhost',
             user='root',
-            password=pw,
+            password=self.pw,
             db='stock',
             charset='utf8'
         )
