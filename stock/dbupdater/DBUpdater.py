@@ -187,6 +187,16 @@ class DBUpdater:
             self.replace_into_db(df, idx, code, self.codes[code])
     
     def execute_daily(self):
+        """ connect to DB """
+        # connect to MariaDB
+        self.conn = pymysql.connect(
+            host='localhost',
+            user='root',
+            password=self.pw,
+            db='stock',
+            charset='utf8'
+        )
+
         """실행 즉시 및 매일 오후 다섯시에 daily_price 테이블 업데이트"""
         self.update_comp_info()
         try:

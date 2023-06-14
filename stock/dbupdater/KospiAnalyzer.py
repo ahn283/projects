@@ -4,6 +4,8 @@ from datetime import datetime
 from datetime import timedelta
 import re
 import security
+from matplotlib import pyplot as plt
+import numpy as np
 
 class KospiTicker:
     def __init__(self):
@@ -94,3 +96,101 @@ class KospiTicker:
         # set index column to date
         df.index = df['date']
         return df
+    
+    # analyze_stock
+    def analyze_stock(self, company, start_date=None, end_date=None, graph=False, rolling_window=20):
+        # # feature name creation using company name
+        # exec("df_%s = %s" % (company, ka.KospiTicker().get_daily_price('company', start_date, end_date)))
+        df = self.get_daily_price(company, start_date, end_date)
+
+
+        # daily returns
+        df['rets_daily'] = df['close'].pct_change().fillna(0)
+        # rolling returns (rolling_window = 20 days)
+        df['rets_rolling'] = df['close'].pct_change(rolling_window).fillna(0)
+
+        # volatility
+        ## rolling volatility (1 year)
+        df['vol_yearly'] = df['rets_daily'].rolling(252).std().fillna(0) * np.sqrt(252)
+        ## rolling volatility (rolling_window = 20 days)
+        df['vol_rolling'] = df['rets_daily'].rolling(rolling_window).std().fillna(0) * np.sqrt(20)
+
+        # Bollinger band
+        ## rolling_window = 20 days
+        df['MA_rolling'] = df['close'].rolling(window=rolling_window).mean()
+        df['MV_rolling'] = df['close'].rolling(window=rolling_window).std()
+        df['bolllinger_upper'] = df['MA_rolling'] + (df['MV_rolling'] * 2)
+        df['bollinger_lower'] = df['MA_rolling'] - (df['MV_rolling'] * 2)
+
+        ## Bollinger band index: %b 
+        df['bollinger_percentage'] = (df['close'] - df['bollinger_lower']) / (df['bolllinger_upper'] - df['bollinger_lower'])
+
+        ## Bollinger band bandwidth
+        df['bollinger_bandwidth'] = (df['bolllinger_upper'] - df['bollinger_lower']) / df['MA_rolling'] * 100
+        
+
+        # plot graph
+
+        if graph == True:
+            plt.figure(figsize=(10, 40))
+            # close price graph
+            plt.subplot(6, 1, 1)
+            plt.plot(df.loc[pd.to_datetime(df.index) > pd.to_datetime(start_date)]['close'])
+            plt.title(f'Daily Close Price: {company}')
+            # returns graph
+            plt.subplot(6, 1, 2)
+            plt.plot(df.loc[pd.to_datetime(df.index) > pd.to_datetime(start_date)]['rets_daily'])
+            plt.title(f'Daily Returns: {company}')
+            # rolling volatility graph
+            plt.subplot(6, 1, 3)
+            plt.plot(df.loc[pd.to_datetime(df.index) > pd.to_datetime(start_date)]['vol_rolling'])
+            plt.title(f'Rolling Volatility: {company}')
+
+            # Bollinger band graph
+            plt.subplot(6, 1, 4)
+            plt.plot(df.index, df['close'], color='#0000ff', label='Close')
+            plt.plot(df.index, df['MA_rolling'], 'k--', label='Moving average 20')
+            plt.plot(df.index, df['bolllinger_upper'], 'r--', label='Upper band')
+            plt.plot(df.index, df['bollinger_lower'], 'c--', label='Lower band')
+            plt.fill_between(df.index, df['bolllinger_upper'], df['bollinger_lower'], color='0.9')
+            plt.legend(loc='best')
+            plt.title(f'{company} Bollinger Band (20 day, 2 std)')
+
+            # Bollinger band index graph
+            plt.subplot(6, 1, 5)
+            plt.plot(df.index, df['bollinger_percentage'], 'b', label='%b')
+            plt.grid(True)
+            plt.legend(loc='best')
+            plt.title(f'{company} %B')
+
+            # Bollinger band bandwidth graph
+            plt.subplot(6, 1, 6)
+            plt.plot(df.index, df['bollinger_bandwidth'], 'm', label='Bandwidth')
+            plt.grid(True)
+            plt.legend(loc='best')
+            plt.title(f'{company} Bandwidth')
+
+
+        # analyze yesterday's data
+        yesterday_data = {'date': df.index[-1], 
+                'close': df['close'][-1], 
+                'ret_yesterday': df['rets_daily'][-1], 
+                'ret_rolling': df['rets_rolling'][-1],
+                'vol_yesterday_yearly': df['vol_yearly'][-1], 
+                'vol_yesterday_rolling': df['vol_rolling'][-1],
+                'bollinger_percentage_yesterday': df['bollinger_percentage'][-1], 
+                'bollinger_percentage_rolling_mean': df['bollinger_percentage'][-rolling_window:].mean(),
+                'bollinger_bandwidth_yesterday': df['bollinger_bandwidth'][-1], 
+                'bollinger_bandwidth_rolling_mean': df['bollinger_bandwidth'][-rolling_window:].mean()}
+        df_analyzed = pd.DataFrame(yesterday_data, index=[0])
+        df_analyzed.set_index('date', inplace=True)
+        
+        print('-----------------')
+        print(f'{company} yesterday data')
+        print('return yesterday: ', df_analyzed['ret_yesterday'][0])
+        print('volatiltity yesterday: ', df_analyzed['vol_yesterday_rolling'][0])
+        print('Bollinger band percentage yesterday: ', df_analyzed['bollinger_percentage_yesterday'][0])
+        print('Bollinger band percentage 20 days mean: ', df_analyzed['bollinger_percentage_rolling_mean'][0])
+        print('Bollinger band bandwidth: ', df_analyzed['bollinger_bandwidth_yesterday'][0])
+        print('Bollinger band bandwidth 20 days mean: ', df_analyzed['bollinger_bandwidth_rolling_mean'][0])
+        return df_analyzed
