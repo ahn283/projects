@@ -9,14 +9,14 @@ import numpy as np
 import KospiAnalyzer as ka
 import scipy.optimize as sco
 import datetime
+import KospiAnalyzer
 from matplotlib import rc
 rc('font', family='AppleGothic')
 import warnings
 warnings.filterwarnings('ignore')
 
 
-
-class KospiCAPM:
+class CAPM:
 
     def __init__(self, tickers, start_date='2020-01-01', end_date=datetime.datetime.now().strftime('%Y-%m-%d')):
         self.tickers = tickers
@@ -28,9 +28,10 @@ class KospiCAPM:
 
     def portfolio(self, start_date, end_date):
         # load kospi tickers data
+        ka = KospiAnalyzer.KospiTicker()
         data = pd.DataFrame()
         for ticker in self.tickers:
-            df = ka.KospiTicker().get_daily_price(ticker, start_date, end_date)
+            df = ka.get_daily_price(ticker, start_date, end_date)
             data[ticker] = df['close']
         
         # returns
