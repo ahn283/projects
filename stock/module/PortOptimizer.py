@@ -8,7 +8,7 @@ import yfinance as yf
 import quantstats as qs
 from matplotlib import rc
 import datetime
-import KospiAnalyzer
+import module.KospiAnalyzer as KospiAnalyzer
 import seaborn as sns
 rc('font', family='AppleGothic')
 import warnings
@@ -36,14 +36,6 @@ class PortOptimizer:
         self.cov = cov.values.reshape(int(cov.shape[0] / cov.shape[1]), cov.shape[1], cov.shape[1])
 
         # transaction cost
-        self.cost = cost
-
-        # returns, expected returns, covariance matrix
-        self.rets, self.er, self.vol, cov = self.portfolio(self.start_date, self.end_date)
-
-        # covariance matrix
-        self.cov = cov.values.reshape(int(cov.shape[0] / cov.shape[1]), cov.shape[1], cov.shape[1])
-
         self.cost = cost
 
 
@@ -321,7 +313,7 @@ class PortOptimizer:
             port_rets.index = pd.to_datetime(port_rets.index)
             qs.reports.html(port_rets, output='./file-name.html')
 
-    def plot_pie_chart(weights, tickers):
+    def plot_pie_chart(self, weights, tickers):
         # weight series
         weights_df = pd.Series(weights, index=tickers)
         weights_df = weights_df[weights_df > 0]
