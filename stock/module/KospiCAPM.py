@@ -6,10 +6,10 @@ import pandas as pd
 # import security
 from matplotlib import pyplot as plt
 import numpy as np
-import KospiAnalyzer as ka
+import module.KospiAnalyzer as ka
 import scipy.optimize as sco
 import datetime
-import KospiAnalyzer
+from module import KospiAnalyzer
 from matplotlib import rc
 rc('font', family='AppleGothic')
 import warnings

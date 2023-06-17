@@ -3,9 +3,11 @@ import pymysql
 from datetime import datetime
 from datetime import timedelta
 import re
-import security
+from module import security
 from matplotlib import pyplot as plt
 import numpy as np
+import warnings
+warnings.filterwarnings('ignore')
 
 class KospiTicker:
     def __init__(self):
