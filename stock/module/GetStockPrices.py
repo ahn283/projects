@@ -42,13 +42,15 @@ class GetStockPrices:
             # get exchange rate data
             usd_krw = pd.DataFrame(yf.download('KRW=X', start=self.start_date, end=self.end_date)['Adj Close'])
             usd_krw.index.name = 'date'
-            self.data_u['usd_krw'] = 1/usd_krw
-            # print(self.data_u.iloc[:, :-1])
+            # self.data_u['usd_krw'] = 1/usd_krw
+            self.data_u['usd_krw'] = usd_krw
+            print(self.data_u.iloc[:, :-1])
 
             # convert us stock price to krw
             for index in range(len(self.data_u.columns) - 1):
-                self.data_u.iloc[:, index] = self.data_u.iloc[:, index] * (1/self.data_u.iloc[:, -1])
-            # print(self.data_u)
+                # self.data_u.iloc[:, index] = self.data_u.iloc[:, index] * (1/self.data_u.iloc[:, -1])
+                self.data_u.iloc[:, index] = self.data_u.iloc[:, index] * (self.data_u.iloc[:, -1])
+            print(self.data_u)
 
         # merge kospi and us stock data
         

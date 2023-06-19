@@ -284,6 +284,7 @@ class PortOptimizer:
         plt.stackplot(port_weights.index, port_weights.T, labels=port_weights.columns)
         plt.title('Portfolio Weights')
         plt.xlabel('Date')
+        plt.xticks(rotation=45, fontsize=6)
         plt.ylabel('Weights')
         plt.legend(loc='upper left')
         plt.show()
@@ -291,8 +292,9 @@ class PortOptimizer:
         # 자산별 누적 수익률
         plt.figure(figsize=(12, 7))
         plt.plot((1 + port_asset_rets).cumprod() - 1)
-        plt.title('Underlying Asset Performance')
+        plt.title('Undelying Asset Performance')
         plt.xlabel('Date')
+        plt.xticks(rotation=45, fontsize=6)
         plt.ylabel('Returns')
         plt.legend(port_asset_rets.columns, loc='upper left')
         plt.show()
@@ -302,11 +304,9 @@ class PortOptimizer:
         plt.plot((1 + port_rets).cumprod() - 1)
         plt.title('Portfolio Performance')
         plt.xlabel('Date')
+        plt.xticks(rotation=45, fontsize=6)
         plt.ylabel('Returns')
         plt.show()
-
-        # 포트폴리오 파이 차트
-        # self.plot_pie_chart(port_weights.iloc[-1], port_weights.columns)
 
         # QuantStats 성과분석 리포트 작성
         if qs_report == True:
