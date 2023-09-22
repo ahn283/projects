@@ -1,4 +1,6 @@
 cpi/lightning_logs/
 mlruns/
+eda/mlruns
+eda/mlartifacts
 eda/lightning_logs/
 mlartifacts/
