@@ -4,3 +4,4 @@ eda/mlruns
 eda/mlartifacts
 eda/lightning_logs/
 mlartifacts/
+output/
