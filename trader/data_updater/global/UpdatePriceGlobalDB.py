@@ -63,7 +63,7 @@ class UpdatePriceGlobalDB():
         mycurosr = con.cursor()
         
         query = """ 
-                INSERT INTO price_global (date, high, low, open, close, volume, adj_close, ticker)
+                INSERT INTO price_global (date, high, low, open, close, adj_close, volume, ticker)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                 high=VALUE(high), low=VALUES(low), open=VALUES(open), close=VALUES(close), volume=VALUES(volume), adj_close=VALUES(adj_close);
