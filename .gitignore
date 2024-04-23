@@ -5,3 +5,5 @@ eda/mlartifacts
 eda/lightning_logs/
 mlartifacts/
 output/
+trader/output
+models/
