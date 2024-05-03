@@ -18,6 +18,11 @@ logger = logging.getLogger(LOGGER_NAME)
 
 # common learner class
 
+def sigmoid(x):
+    x = max(min(x, 10), -10)
+    return 1. / (1. + np.exp(-x))
+    
+
 class ReinforcementLearner:
 
     ''' 
@@ -495,3 +500,274 @@ class ReinforcementLearner:
                 print(json.dump(result), file=f)
                 
         return result
+
+# DQN Learner
+
+class DQNLearner(ReinforcementLearner):
+    def __init__(self, *args, value_network_path=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.value_network_path = value_network_path
+        # create value network
+        self.init_value_network()
+        
+    # specify an abstract method
+    def get_batch(self):
+        # reversed memory array
+        memory = zip(
+            reversed(self.memory_sample),
+            reversed(self.memory_action),
+            reversed(self.memory_value),
+            reversed(self.memory_reward),
+        )
+        
+        # prepare sample array 'x' and label array 'y_value' with 0 value
+        x = np.zeros((len(self.memory_sample), self.num_steps, self.num_features))
+        y_value = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        value_max_next = 0
+        
+        # we can handle from the last data becuase of reversed memory
+        for i, (sample, action, value, reward) in enumerate(memory):
+            # sample
+            x[i] = sample
+            ## reward for training
+            ## memory_reward[-1] : last profit/loss in the batch data
+            ## reward : profit/loss at the time of action
+            r = self.memory_reward[-1] - reward
+            # value network output
+            y_value[i] = value
+            # state-action value
+            y_value[i, action] = r + self.gamma * value_max_next
+            # save the maximum next state value
+            value_max_next = value.max()
+            
+        # return sample array, value network label, policy network label
+        # DQN has no policy network, return None
+        return x, y_value, None
+    
+# Policy gradient learner
+
+class PolicyGradientLearner(ReinforcementLearner):
+    def __init__(self, *args, policy_network_path=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.policy_network_path = policy_network_path
+        self.init_policy_network()
+        
+    def get_batch(self):
+        memory = zip(
+            reversed(self.memory_sample),
+            reversed(self.memory_action),
+            reversed(self.memory_policy),
+            reversed(self.memory_reward),
+        )
+        # sample array composed of training data and agent states
+        x = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        # label array for training policy network
+        y_policy = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        for i, (sample, action, policy, reward) in enumerate(memory):
+            # feature vector
+            x[i] = sample
+            r = self.memory_reward[-1] - reward
+            # policy network output
+            y_policy[i, :] = policy
+            # get probabilities from the reward by sigmoid
+            y_policy[i, action] = sigmoid(r)
+            
+        # there is no value network in PG
+        return x, None, y_policy
+    
+
+# Actor-critic 
+class ActorCriticLearner(ReinforcementLearner):
+    def __init__(self, *args, shared_network=None,
+                 value_network_path=None, policy_network_path=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # shared layer of policy network and value network
+        if shared_network is None:
+            self.share_network = net.Network.get_shared_network(
+                net=self.net, num_steps=self.num_steps,
+                imput_dim=self.num_features,
+                output_dim=Agent.NUM_ACTIONS
+            )
+        else:
+            self.share_network = shared_network
+        self.value_network_path = value_network_path
+        self.policy_netwokr_path = policy_network_path
+        if self.value_network is None:
+            self.init_value_network(shared_network=self.share_network)
+        if self.policy_network is None:
+            self.init_policy_network(shared_network=self.share_network)
+            
+    def get_batch(self):
+        memory = zip(
+            reversed(self.memory_sample),
+            reversed(self.memory_action),
+            reversed(self.memory_value),
+            reversed(self.memory_policy),
+            reversed(self.memory_reward),
+        )
+        x = np.zeros((len(self.memory_sample), self.num_steps, self.num_features))
+        y_value = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        y_policy = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        value_max_next = 0
+        for i, (sample, action, value, policy, reward) in enumerate(memory):
+            x[i] = sample
+            r = self.memory_reward[-1] - reward
+            # value network
+            y_value[i, :] = value
+            y_value[i, action] = r + self.gamma * value_max_next
+            y_policy[i, :] = policy
+            # policy network label
+            y_policy[i, action] = sigmoid(r)
+            value_max_next = value.max()
+            # add entropy?
+        return x, y_value, y_policy
+    
+# A2C (Advantage Actor Critic)
+class A2CLearner(ActorCriticLearner):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def get_batch(self):
+        memory = zip(
+            reversed(self.memory_sample),
+            reversed(self.memory_action),
+            reversed(self.memory_value),
+            reversed(self.memory_policy),
+            reversed(self.memory_reward),
+        )
+        
+        x = np.zeros((len(self.memory_sample), self.num_steps, self.num_features))
+        y_value = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        y_policy = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        value_max_next = 0
+        reward_next = self.memory_reward[-1]
+        for i, (sample, action, value, policy, reward) in enumerate(memory):
+            x[i] = sample
+            r = reward_next + self.memory_reward[-1] - reward * 2
+            y_value[i, :] = value
+            y_value[i, action] = np.tanh(r + self.gamma * value_max_next)
+            advantage = y_value[i, action] - y_value[i].mean()
+            y_policy[i, :] = policy
+            y_policy[i, action] = sigmoid(advantage)
+            value_max_next = value.max()
+        
+        return x, y_value, y_policy
+    
+# A3C (Asynchrnous Advantage Actor-critic)
+class A3CLearner(ReinforcementLearner):
+    def __init__(self, *args, list_stock_code=None,
+                 list_stock_data=None, list_training_data=None,
+                 list_min_trading_money=None, list_max_trading_money=None,
+                 value_network_path=None, policy_network_path=None,
+                 **kwargs):
+        
+        assert len(list_training_data) > 0
+        super().__init__(*args, **kwargs)
+        self.num_features += list_training_data[0].shape[1]
+        
+        ''' 
+        Create A2C learner instances as many as list size
+        each A2C learner shares value network and policy network
+        '''
+        self.shared_network = net.Network.get_shared_network(
+            net=self.net, num_steps=self.num_steps,
+            input_dim=self.num_features,
+            output_dim=Agent.NUM_ACTIONS
+        )
+        self.value_netwokr_path = value_network_path
+        self.policy_network_path = policy_network_path
+        if self.value_network is None:
+            self.init_value_network(shared_network=self.shared_network)
+        if self.policy_network is None:
+            self.init_policy_network(shared_network=self.shared_network)
+            
+        # create A2c instances
+        self.learners = []
+        for (stock_code, stock_data, training_data,
+             min_trading_money, max_trading_money) in zip(
+                 list_stock_code, list_stock_data, list_training_data,
+                 list_min_trading_money, list_max_trading_money
+             ):
+                 learner = A2CLearner(
+                     *args, stock_code=stock_code,
+                     stock_data=stock_data,
+                     training_data=training_data,
+                     min_trading_money=min_trading_money,
+                     max_trading_money=max_trading_money,
+                     shared_network=self.shared_network,
+                     value_network=self.value_network,
+                     policy_network=self.policy_network,
+                     **kwargs
+                 )
+                 self.learners.append(learner)
+    
+    def run(self, learning=True):
+        threads = []
+        # execute run() method of each A2CLearner instances simultaneously
+        for learner in self.learners:
+            threads.append(threading.Thread(
+                target=learner.run, daemon=True, kwargs={'learning': learning}
+            ))
+            
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    
+    def predict(self):
+        threads = []
+        for learner in self.learners:
+            threads.append(threading.Thread(
+                target=learner.predict, daemon=True
+            ))
+        
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+            
+
+# PPO (Proximal policy optimization)
+
+class PPOLearner(A2CLearner):
+    def __init__(self, *args, lmb=0.95, eps=0.1, K=3, **kwargs):
+        kwargs['value_network_activation'] = 'tanh'
+        kwargs['policy_network_activation'] = 'tanh'
+        super().__init__(*args, **kwargs)
+        self.lmb = lmb
+        self.eps = eps
+        self.K = K
+        
+    def get_batch(self):
+        memory = zip(
+            reversed(self.memory_sample),
+            reversed(self.memory_action),
+            reversed(self.memory_value),
+            reversed(self.memory_policy),
+            reversed(self.memory_reward),
+        )
+        x = np.zeros((len(self.memory_sample), self.num_steps, self.num_features))
+        y_value = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        y_policy = np.zeros((len(self.memory_sample), Agent.NUM_ACTIONS))
+        value_max_next = 0
+        for i, (sample, action, value, policy, reward) in enumerate(memory):
+            x[i] = sample
+            y_value[i, action] = np.tanh(reward + self.gamma * value_max_next)
+            advantage = y_value[i, action] - y_value[i].mean()
+            y_policy[i, :] = policy
+            y_policy[i, action] = value.max()
+        return x, y_value, y_policy
+    
+    def fit(self):
+        x, y_value, y_policy = self.get_batch()
+        # initialize loss
+        self.loss = None
+        if len(x) > 0:
+            loss = 0
+            if y_value is not None:
+                # update value network
+                loss += self.value_network.train_on_batch(x, y_value)
+            if y_policy is not None:
+                # update policy network
+                loss += self.policy_network.train_on_batch_for_ppo(x, y_policy, list(reversed(self.memory_action)), self.eps, self.K)
+            self.loss = loss
