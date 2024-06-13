@@ -18,12 +18,17 @@ import platform
 
 class UpdateTickerGlobalDB():
     
-    def __init__(self):
+    def __init__(self, user, pw, host, port, db):
         # # install Chrome driver
         # self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
         # US country code = '5'
         self.country_code = '5'
+        self.user = user
+        self.pw = pw
+        self.host = host
+        self.port = port
+        self.db = db
 
 
         # # first page URL
@@ -115,15 +120,19 @@ class UpdateTickerGlobalDB():
         all_data_df_bind = self.get_ticker_global_data()
 
         # database info
-        user = 'root'
-        pw = keyring.get_password('macmini_db', user)
-        host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
+        # user = 'root'
+        # pw = keyring.get_password('macmini_db', user)
+        # host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
+        user = self.user
+        pw = self.pw
+        host = self.host
+        db = self.db
         
         con = pymysql.connect(
             user=user,
             passwd=pw,
             host=host,
-            db='stock',
+            db=db,
             charset='utf8'
         )
         

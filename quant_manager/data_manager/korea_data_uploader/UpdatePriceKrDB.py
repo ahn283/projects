@@ -13,13 +13,18 @@ import platform
 
 class UpdatePriceKrDB:
     
-    def __init__(self):
+    def __init__(self, user, pw, host, port, db):
         
-        self.user = 'root'
-        self.pw = keyring.get_password('macmini_db', self.user)
-        self.host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
-        self.port = 3306
-        self.db = 'stock'
+        # self.user = 'root'
+        # self.pw = keyring.get_password('macmini_db', self.user)
+        # self.host = '192.168.219.112' if platform.system() == 'Windows' else '127.0.0.1'
+        # self.port = 3306
+        # self.db = 'stock'
+        self.user = user
+        self.pw = pw
+        self.host = host
+        self.port = port
+        self.db = db
         self.ticker_list = self.read_ticker_list()
         
     def read_ticker_list(self):
@@ -69,7 +74,7 @@ class UpdatePriceKrDB:
             
             # start date and end date
             # fr = (date.today() + relativedelta(years=-50)).strftime('%Y%m%d')
-            fr = (date.today() + relativedelta(months=-1)).strftime('%Y%m%d')
+            fr = (date.today() + relativedelta(months=-6)).strftime('%Y%m%d')
             to = (date.today()).strftime('%Y%m%d')
             
             # error occurs, skip and do next loop

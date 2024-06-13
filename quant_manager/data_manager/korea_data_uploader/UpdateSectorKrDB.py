@@ -12,7 +12,12 @@ import platform
 
 class UpdateSectorKrDB:
     
-    def __init__(self):
+    def __init__(self, user, pw, host, port, db):
+        self.user = user
+        self.pw = pw
+        self.host = host
+        self.port = port
+        self.db = db
         self.biz_day = self.get_recent_biz_day()
         self.url = f'http://www.wiseindex.com/Index/GetIndexComponets?ceil_yn=0&dt={self.biz_day}&sec_cd=G10'        
     
@@ -78,15 +83,15 @@ class UpdateSectorKrDB:
         kor_sector = kor_sector.replace({np.nan: None})
         
         # database info
-        user = 'root'
-        pw = keyring.get_password('macmini_db', user)
-        host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
+        # user = 'root'
+        # pw = keyring.get_password('macmini_db', user)
+        # host = '192.168.219.112' if platform.system() == 'Windows' else '127.0.0.1'
         
         con = pymysql.connect(
-            user=user,
-            passwd=pw,
-            host=host,
-            db='stock',
+            user=self.user,
+            passwd=self.pw,
+            host=self.host,
+            db=self.db,
             charset='utf8'
         )
         

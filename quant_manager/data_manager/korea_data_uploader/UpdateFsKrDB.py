@@ -11,13 +11,18 @@ import platform
 
 class UpdateFsKrDB():
     
-    def __init__(self):
+    def __init__(self, user, pw, host, port, db):
         
-        self.user = 'root'
-        self.pw = keyring.get_password('macmini_db', self.user)
-        self.host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
-        self.port = 3306
-        self.db = 'stock'
+        # self.user = 'root'
+        # self.pw = keyring.get_password('macmini_db', self.user)
+        # self.host = '192.168.219.112' if platform.system() == 'Windows' else '127.0.0.1'
+        # self.port = 3306
+        # self.db = 'stock'
+        self.user = user
+        self.pw = pw
+        self.host = host
+        self.port = port
+        self.db = db
         self.query = """ 
                     INSERT INTO fs_kr (account, date, value, company_code, frequency)
                     VALUES (%s, %s, %s, %s, %s)
@@ -41,7 +46,7 @@ class UpdateFsKrDB():
         
         return ticker_list
     
-    def clean_fs(df, ticker, frequency):
+    def clean_fs(self, df, ticker, frequency):
         
         # clean financial statements
         df = df[~df.loc[:, ~df.columns.isin(['account'])].isna().all(axis=1)]
@@ -52,6 +57,51 @@ class UpdateFsKrDB():
         df['date'] = pd.to_datetime(df['date'], format='%Y/%m') + pd.tseries.offsets.MonthEnd()
         df['ticker'] = ticker
         df['frequency'] = frequency
+        
+        return df
+        
+    def read_fs(self, ticker):
+        
+        # url
+        url = f'http://comp.fnguide.com/SVO2/ASP/SVD_Finance.asp?pGB=1&gicode=A{ticker}'
+                
+        # get data
+        data = pd.read_html(url, displayed_only=False)
+                
+        # yearly data
+        data_fs_y = pd.concat([
+            data[0].iloc[:, ~data[0].columns.str.contains('전년동기')],
+            data[2], data[4]
+        ])
+        data_fs_y = data_fs_y.rename(columns={data_fs_y.columns[0]: 'account'})
+                
+        # settlement year
+        page_data = rq.get(url)
+        page_data_html = BeautifulSoup(page_data.content, 'html.parser')
+                
+        fiscal_data = page_data_html.select('div.corp_group1 > h2')
+        fiscal_data_text = fiscal_data[1].text
+        fiscal_data_text = re.findall('[0-9]+', fiscal_data_text)
+                
+        # get only settlement year's data
+        data_fs_y = data_fs_y.loc[:, (data_fs_y.columns == 'account') | (data_fs_y.columns.str[-2:].isin(fiscal_data_text))]
+                
+        # clean data
+        data_fs_y_clean = self.clean_fs(data_fs_y, ticker, 'y')
+                
+        # qaurterly data
+        data_fs_q = pd.concat([
+            data[1].iloc[:, ~ data[1].columns.str.contains('전년동기')],
+            data[3], data[5]
+        ])
+        data_fs_q = data_fs_q.rename(columns={data_fs_q.columns[0]: "account"})
+        data_fs_q_clean = self.clean_fs(data_fs_q, ticker, 'q')
+                
+        # concat yearly and quarterly data
+        data_fs_bind = pd.concat([data_fs_y_clean, data_fs_q_clean])
+        
+        return data_fs_bind
+        
         
     def update_db_fs_kr(self):
         
@@ -68,7 +118,13 @@ class UpdateFsKrDB():
             charset='utf8'
         )
         mycursor = con.cursor()
-
+        
+        # query = """ 
+        # INSERT INTO fs_kr (account, date, value, company_code, frequency)
+        # VALUES (%s, %s, %s, %s, %s)
+        # ON DUPLICATE KEY UPDATE
+        # value=VALUES(value)
+        # """
         
         # for loop
         for i in tqdm(range(0, len(ticker_list))):
@@ -76,48 +132,50 @@ class UpdateFsKrDB():
             ticker = ticker_list['company_code'][i]
             
             try:
-                # url
-                url = f'http://comp.fnguide.com/SVO2/ASP/SVD_Finance.asp?pGB=1&gicode=A{ticker}'
+                # # url
+                # url = f'http://comp.fnguide.com/SVO2/ASP/SVD_Finance.asp?pGB=1&gicode=A{ticker}'
                 
-                # get data
-                data = pd.read_html(url, displayed_only=False)
+                # # get data
+                # data = pd.read_html(url, displayed_only=False)
                 
-                # yearly data
-                data_fs_y = pd.concat([
-                    data[0].iloc[:, ~data[0].columns.str.contains('전년공기')],
-                    data[2], data[4]
-                ])
-                data_fs_y = data_fs_y.rename(columns={data_fs_y.columns[0]: 'account'})
+                # # yearly data
+                # data_fs_y = pd.concat([
+                #     data[0].iloc[:, ~data[0].columns.str.contains('전년공기')],
+                #     data[2], data[4]
+                # ])
+                # data_fs_y = data_fs_y.rename(columns={data_fs_y.columns[0]: 'account'})
                 
                 
-                # settlement year
-                page_data = rq.get(url)
-                page_data_html = BeautifulSoup(page_data.content, 'html.parser')
+                # # settlement year
+                # page_data = rq.get(url)
+                # page_data_html = BeautifulSoup(page_data.content, 'html.parser')
                 
-                fiscal_data = page_data_html.select('div.corp_group1 > h2')
-                fiscal_data_text = fiscal_data[1].text
-                fiscal_data_text = re.findall('[0-9]+', fiscal_data_text)
+                # fiscal_data = page_data_html.select('div.corp_group1 > h2')
+                # fiscal_data_text = fiscal_data[1].text
+                # fiscal_data_text = re.findall('[0-9]+', fiscal_data_text)
                 
-                # get only settlement year's data
-                data_fs_y = data_fs_y.loc[:, (data_fs_y.columns == 'account') | (data_fs_y.columns.str[-2:].isin(fiscal_data_text))]
+                # # get only settlement year's data
+                # data_fs_y = data_fs_y.loc[:, (data_fs_y.columns == 'account') | (data_fs_y.columns.str[-2:].isin(fiscal_data_text))]
                 
-                # clean data
-                data_fs_y_clean = self.clean_fs(data_fs_y, ticker, 'y')
+                # # clean data
+                # data_fs_y_clean = self.clean_fs(data_fs_y, ticker, 'y')
                 
-                # qaurterly data
-                data_fs_q = pd.concat([
-                    data[1].iloc[:, ~ data[1].columns.str.contains('전년동기')],
-                    data[3], data[5]
-                ])
-                data_fs_q = data_fs_q.rename(columns={data_fs_q.columns[0]: "account"})
-                data_fs_q_clean = self.clean_fs(data_fs_q, ticker, 'q')
+                # # qaurterly data
+                # data_fs_q = pd.concat([
+                #     data[1].iloc[:, ~ data[1].columns.str.contains('전년동기')],
+                #     data[3], data[5]
+                # ])
+                # data_fs_q = data_fs_q.rename(columns={data_fs_q.columns[0]: "account"})
+                # data_fs_q_clean = self.clean_fs(data_fs_q, ticker, 'q')
                 
-                # concat yearly and quarterly data
-                data_fs_bind = pd.concat([data_fs_y_clean, data_fs_q_clean])
+                # # concat yearly and quarterly data
+                # data_fs_bind = pd.concat([data_fs_y_clean, data_fs_q_clean])
+                
+                data_fs_bind = self.read_fs(ticker)
                 
                 # insert into sb
                 args = data_fs_bind.values.tolist()
-                mycursor.executemany(query, args)
+                mycursor.executemany(self.query, args)
                 con.commit()           
                 
                 

@@ -7,13 +7,18 @@ import platform
 
 class UpdateValueKrDB():
     
-    def __init__(self):
+    def __init__(self, user, pw, host, port, db):
         
-        self.user = 'root'
-        self.pw = keyring.get_password('macmini_db', self.user)
-        self.host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
-        self.port = 3306
-        self.db = 'stock'
+        # self.user = 'root'
+        # self.pw = keyring.get_password('macmini_db', self.user)
+        # self.host = '192.168.219.112' if platform.system() == 'Windows' else '127.0.0.1'
+        # self.port = 3306
+        # self.db = 'stock'
+        self.user = user
+        self.pw = pw
+        self.host = host
+        self.port = port
+        self.db = db
     
     def get_data(self):
         

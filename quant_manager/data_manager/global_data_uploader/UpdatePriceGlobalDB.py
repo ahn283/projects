@@ -8,12 +8,12 @@ import keyring
 import platform
 
 class UpdatePriceGlobalDB():
-    def __init__(self):
-        self.user = 'root'
-        self.pw = keyring.get_password('macmini_db', self.user)
-        self.host = '192.168.219.106' if platform.system() == 'Windows' else '127.0.0.1'
-        self.port = 3306
-        self.db = 'stock'
+    def __init__(self, user='root', pw='', host='192.168.219.112', port=3306, db='stock'):
+        self.user = user
+        self.pw = pw
+        self.host = host
+        self.port = port
+        self.db = db
         
     def get_ticker_list(self):
         
