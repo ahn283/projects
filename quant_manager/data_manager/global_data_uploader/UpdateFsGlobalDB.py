@@ -46,11 +46,36 @@ class UpdateFsGlobalDB():
         
         return ticker_list
     
+    def read_fs_global(self, ticker):
+        # download data
+        data = Ticker(ticker)
+                
+        # yearly fs
+        data_y = data.all_financial_data(frequency='a')
+        data_y.reset_index(inplace=True)
+        data_y = data_y.loc[:, ~data_y.columns.isin(['periodType', 'currencyCode'])]
+        data_y = data_y.melt(id_vars=['symbol', 'asOfDate'])
+        data_y = data_y.replace([np.nan], 'None')
+        data_y['freq'] = 'y'
+        data_y.columns = ['ticker', 'date', 'account', 'value', 'freq']
+                
+        # quarterly fs
+        data_q = data.all_financial_data(frequency='q')
+        data_q.reset_index(inplace=True)
+        data_q = data_q.iloc[:, ~data_q.columns.isin(['periodType', 'currencyCode'])]
+        data_q = data_q.melt(id_vars=['symbol', 'asOfDate'])
+        data_q = data_q.replace([np.nan], 'None')
+        data_q['freq'] = 'q'
+        data_q.columns = ['ticer', 'date', 'account', 'value', 'freq']
+                
+        # concat
+        data_fs = pd.concat([data_y, data_q], axis=0)
+        data_fs = data_fs.replace([np.nan], 'None')
+        return data_fs
+        
+    
     def update_db_fs_global(self):
         
-        # connect DB
-        engine = create_engine(f'mysql+pymysql://{self.user}:{self.pw}@{self.host}:{self.port}/{self.db}')
-
         con = pymysql.connect(
             user=self.user,
             passwd=self.pw,
@@ -80,37 +105,43 @@ class UpdateFsGlobalDB():
             ticker = ticker_list['symbol'][i]
             
             try:
-                # download data
-                data = Ticker(ticker)
+                # # download data
+                # data = Ticker(ticker)
                 
-                # yearly fs
-                data_y = data.all_financial_data(frequency='a')
-                data_y.reset_index(inplace=True)
-                data_y = data_y.loc[:, ~data_y.columns.isin(['periodType', 'currencyCode'])]
-                data_y = data_y.melt(id_vars=['symbol', 'asOfDate'])
-                data_y = data_y.replace([np.nan], None)
-                data_y['freq'] = 'y'
-                data_y.columns = ['ticker', 'date', 'account', 'value', 'freq']
+                # # yearly fs
+                # data_y = data.all_financial_data(frequency='a')
+                # data_y.reset_index(inplace=True)
+                # data_y = data_y.loc[:, ~data_y.columns.isin(['periodType', 'currencyCode'])]
+                # data_y = data_y.melt(id_vars=['symbol', 'asOfDate'])
+                # data_y = data_y.replace([np.nan], None)
+                # data_y['freq'] = 'y'
+                # data_y.columns = ['ticker', 'date', 'account', 'value', 'freq']
                 
-                # quarterly fs
-                data_q = data.all_financial_data(frequency='q')
-                data_q.reset_index(inplace=True)
-                data_q = data_q.iloc[:, ~data_q.columns.isin(['periodType', 'currencyCode'])]
-                data_q = data_q.melt(id_vars=['symbol', 'asOfDate'])
-                data_q = data_q.replace([np.nan], None)
-                data_q['freq'] = 'q'
-                data_q.columns = ['ticer', 'date', 'account', 'value', 'freq']
+                # # quarterly fs
+                # data_q = data.all_financial_data(frequency='q')
+                # data_q.reset_index(inplace=True)
+                # data_q = data_q.iloc[:, ~data_q.columns.isin(['periodType', 'currencyCode'])]
+                # data_q = data_q.melt(id_vars=['symbol', 'asOfDate'])
+                # data_q = data_q.replace([np.nan], None)
+                # data_q['freq'] = 'q'
+                # data_q.columns = ['ticer', 'date', 'account', 'value', 'freq']
                 
-                # concat
-                data_fs = pd.concat([data_y, data_q], axis=0)
+                # # concat
+                # data_fs = pd.concat([data_y, data_q], axis=0)
+                # data_fs = data_fs.where((pd.notnull(data_fs)), None)
+                # print(data_fs)
+                
+                data_fs = self.read_fs_global(ticker)
                 
                 # insert into db
                 args = data_fs.values.tolist()
+                print(args)
                 mycursor.executemany(query, args)
                 con.commit()
                 
-            except:
+            except Exception as inst:
                 print(ticker)
+                print(inst.args)
                 error_list.append(ticker)
                 
             time.sleep(1)
