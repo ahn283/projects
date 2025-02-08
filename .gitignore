@@ -9,3 +9,4 @@ trader/output
 models/
 insurance_chatbot/data
 blogbot/blogbot
+fact_checker/factchecker
