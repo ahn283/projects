@@ -60,14 +60,24 @@ tools = [search_tool]
 
 # Superisor
 supervisor_system = """
-You are a text analysis specialist in a Query Analysis Team.
-Your primary role is to extract contentious issues from the input text that require fact-checking.
-You should answer the same language as user's input.
+You are a supervisor with managing several teams and agents to verify contentious issues from the given text.
+For the given objective, make plans that can solve the problem step by step.
+You can store the evidence into a variable #E that can be called by later tools. (Plan, #E1, Plan, #E2, )
+
+Tools can be one of the following:
+(1) Google[input]: Worker that searches result from Google.
+Useful when you need find short and succinct answers about a specific topic.
+The input should be a search query.
+(2) Analyzer[input]: A pretrained LLM like youself.
+Useful when you need to extract contentious issues from the input text that requires fact-checking.
+
+Prioritize it when you are confident in solving the problem youself.
+Input can be any instruction.
 
 # Your Responsibilities:
 	1.	Analyze the input text for extracting contention:
 Analyze the input text carefully to identify potential areas of controversy or claims requiring verification.
-	2.	Extranc specific contentious iuuses:
+	2.	Extract specific contentious iuuses:
 Extract specific contentious issues, including any claims, statistics, or opinions that might spark debate or require validation.
   	3.	Review Extracted Contentious Issues:
 Carefully analyze the issues provided by the query analyst, ensuring you fully understand the context and significance of each issue.

@@ -1,63 +1,18 @@
-import keyring
-import os
-import operator
 import json
 import re
 
-import streamlit as st
-
-from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai import GoogleGenerativeAI
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-
-from typing_extensions import TypedDict
-from typing import Annotated, List
+from langchain_core.messages import HumanMessage
 
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
 
-from supervisor import FactCheckState
-
-
-# API key
-OPENAI_API_KEY = keyring.get_password('openai', 'key_for_mac')
-GOOGLE_API_KEY = keyring.get_password('gemini', 'key_for_mac')
-ANTHROPIC_API_KEY = keyring.get_password('anthropic', 'key_for_mac')
-TAVILY_API_KEY = keyring.get_password('tavily', 'key_for_mac')
-os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
-os.environ['TAVILY_API_KEY'] = TAVILY_API_KEY
-
-# Set up LangSmith observability
-os.environ['LANGCHAIN_TRACING_V2'] = 'true'
-os.environ['LANGCHAIN_ENDPOINT'] = "https://api.smith.langchain.com"
-os.environ['LANGCHAIN_API_KEY'] = keyring.get_password('langsmith', 'fact_checker')
-os.environ['LANGCHAIN_PROJECT'] = "proj-fact-checker"
-
-
-# A function for determining a model
-def set_model(llm: str = "gemini", model: str = "gemini-2.0-flash"):
-    if llm == "gemini":
-        llm = ChatGoogleGenerativeAI(model=model, api_key=GOOGLE_API_KEY)
-    elif llm == "openai":
-        llm = ChatOpenAI(model=model, api_key=OPENAI_API_KEY)
-    elif llm == "anthropic":
-        llm = ChatAnthropic(model=model, api_key=ANTHROPIC_API_KEY)
-    else:
-        raise ValueError("No model found")
-    return llm
-
-def call_model(llm, query:str):
-    response = llm.invoke(query)
-    return response
+from state import FactCheckState
+from tools import search, clean_json_output
 
 # Define tools
 # Tavily search tool
-search_tool = TavilySearchResults(max_results=5)
+search_tool = search(max_result=5)
 
 tools = [search_tool]
 
@@ -88,33 +43,21 @@ Present the summarized issues in a clean and structured format that is easy to r
 # Output Format: 
 {
     "contentious_issues": [
-        "[#1] Summarized issue 1",
-        "[#2] Summarized issue 2",
+        "Summarized issue 1",
+        "Summarized issue 2",
         ...
     ]
 }
 """
 
-# State for fact checkers
-class FactCheckState(TypedDict):
-    # A messages is added after each member finishes
-    messages: Annotated[List[BaseMessage], add_messages]
-    # A list of contention extracted from the query
-    contentions: List[str]
-
 # Class for analysis agent
 class Analyzer:
     
-    def __init__(self, llm, name):
+    def __init__(self, llm, name:str = "Nicole"):
         self.llm = llm      # The llm model to be used
         self.tools = tools  # The tools to be used
         self.name = name    # The name of an agent
         self.system_prompt = system_prompt  # System prompt
-    
-    # Remove 'json' word from the response of Google Gemini    
-    def clean_json_output(self, response: str) -> str:
-        """Removes ```json and ``` from LLM output."""
-        return re.sub(r"```json\n|\n```", "", response).strip()
     
     # Create analysis node using create_react_agent api
     def _create_node(self, state) -> FactCheckState:
@@ -124,7 +67,7 @@ class Analyzer:
         messages = result["messages"][-1].content
         
         # Get the infromation from the response
-        cleaned_messages = self.clean_json_output(messages)
+        cleaned_messages = clean_json_output(messages)
         
         try:
             output = json.loads(cleaned_messages)
@@ -147,4 +90,3 @@ class Analyzer:
         workflow.add_edge(self.name, END)
         graph = workflow.compile()
         return graph
-                

@@ -5,8 +5,10 @@ import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
-from supervisor import set_model, call_model, FactCheckState, Supervisor
 from analyzer import Analyzer
+from researcher import Researcher
+from research_team import ResearchTeam
+from tools import set_model
 
 # API key
 GOOGLE_API_KEY = keyring.get_password('gemini', 'key_for_mac')
@@ -36,7 +38,7 @@ if selected_model == "openai":
 elif selected_model == "gemini":
     model_name = "gemini-2.0-flash"
 elif selected_model == "anthropic": 
-    model_name = "claude-3-5-sonnet-latest"
+    model_name = "claude-3-5-haiku-latest"
     
 # Display the selected model
 st.text_input(f"**Model:**", value=model_name)
@@ -47,9 +49,22 @@ llm = set_model(selected_model, model_name)
 
 query = st.text_area("Input contentions to be checked..")
 if st.button("Verify"):
+    # # Research Team
+    # # Research team member
+    # members = ["economy", "politics", "social", "culture", "technology", "science", "general"]
+    # names = ["John", "Machiavelli", "Marx", "Rose", "Elon", "Newton", "Rick"]
+    # workflow = ResearchTeam(llm=llm)
+    
+    # # Researcher
+    # name = "Nicole"
+    # specialty = "politics"
+    # workflow = Researcher(llm, name, specialty)
+    
+    # Analyzer
     name = "Nicole"
-    analysis = Analyzer(llm, name)
-    app = analysis.create_graph()
+    workflow = Analyzer(llm, name)
+    
+    app = workflow.create_graph()
     for s in app.stream(
             {
                 "messages": [HumanMessage(
@@ -59,7 +74,10 @@ if st.button("Verify"):
         ):
             if "__end__" not in s:
                 with st.chat_message(name):
-                    st.write("아래 내용에 대해서 사실 확인이 필요합니다.")
-                    st.write()
-                    st.write(s[f"{name}"]["messages"][0])
-                    st.write("---")
+                    st.write("답변드립니다.")
+                    
+                    # Analyzer
+                    st.write(s[f"{name}"]["contentions"])
+                    
+                    # # Researcher
+                    # st.write(s[f"{name}"]["messages"][0].content)
