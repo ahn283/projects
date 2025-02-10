@@ -1,6 +1,7 @@
 import keyring
 import os
 import re
+from pprint import pprint
 
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_openai import ChatOpenAI
@@ -67,14 +68,29 @@ def invoke_graph(graph, message):
     ):
         print(s)
         print("---")
+    
         
 def stream_graph(graph, message):
-    for event in graph.stream(
-        {
-            "messages": [{"role": "user", "content": message}]
-        }
-    ):
+    
+    state = {"messages": [{"role": "user", "content": message}]}
+    
+    for event in graph.stream(state, stream_mode="value"):  
         for value in event.values():
-            # ✅ Ensure 'messages' key exists before accessing it
-            if "messages" in value and value["messages"]:
+            # Ensure 'messages' key exists before accessing it
+            if "messages" in value:
                 print("AI:", value["messages"][-1].content)
+
+def stream_graph_kv(graph, message):
+    
+    inputs = {"messages": [{"role": "user", "content": message}]}
+    
+    for output in graph.stream(inputs):
+        for key, value in output.items():
+            # Node
+            print(f"Node '{key}'")
+            print(f"{value}")
+        pprint("\n---\n")
+    
+    # Final messages
+    if "messages" in value:
+        pprint(f"AI: {value['messages'][-1].content}")
