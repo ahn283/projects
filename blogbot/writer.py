@@ -44,7 +44,7 @@ You are a **blog writer** responsible for crafting an engaging and well-structur
 - Make the content **engaging and easy to understand**.
 
 ## Planner outlines
-{outlines}
+{outline}
 
 ## Researches
 {docs}
@@ -69,13 +69,14 @@ class Writer:
     def create_node(self, state: State):
         
         """A writer defines the blog post structure."""
-        outlines = state["outline"]
-        codes = state["code"]
-        docs = state["docs"]
+        outline = state.get("outline", "No outline provided.")
+        codes = state.get("codes", "No code snippets available.")
+        docs = state.get("docs", "No research documents available.")
         agent = create_react_agent(self.llm, tools=self.tools, state_modifier=self.system_prompt.format(
-            {"outlines": outlines,
-             "codes": codes,
-             "doc": docs}
+            # {"outline": outline,
+            #  "codes": codes,
+            #  "docs": docs}
+            outline=outline, codes=codes, docs=docs
         ))
         results = agent.invoke({"messages": state["messages"][-1]})
         

@@ -15,7 +15,7 @@ class State(TypedDict):
     docs: Optional[str]
     
     # Stores generated code snippets
-    code: Optional[str]  
+    codes: Optional[str]  
     
     # Stores a generated outline
     outline: Optional[str]
